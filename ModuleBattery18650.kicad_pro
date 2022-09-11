@@ -411,11 +411,7 @@
         "name": "Power2",
         "nets": [
           "/Vch",
-          "/Vcharge",
-          "GND",
-          "Net-(R4-Pad1)",
-          "VDD",
-          "Vbat"
+          "GND"
         ],
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
