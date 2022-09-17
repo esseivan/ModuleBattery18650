@@ -2,7 +2,7 @@
 
 
 ## Schematic
-![Schematic](/outputs/ModuleBattery18650.pdf)
+![Schematic](/outputs/schematic.jpg)
 
 ## 3D
 The footprint of the mosfets have been changed. The PCB is not finished yet
