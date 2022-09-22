@@ -388,7 +388,7 @@
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
-        "name": "Power",
+        "name": "Battery",
         "nets": [
           "Net-(BT1-Pad1)"
         ],
@@ -408,10 +408,14 @@
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
-        "name": "Power2",
+        "name": "Power",
         "nets": [
           "/Vch",
-          "GND"
+          "GND",
+          "Net-(C1-Pad1)",
+          "Net-(JP1-Pad2)",
+          "Net-(R2-Pad1)",
+          "Net-(RS2-Pad2)"
         ],
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
