@@ -410,6 +410,7 @@
         "microvia_drill": 0.1,
         "name": "Power",
         "nets": [
+          "/Vbat",
           "/Vch",
           "GND",
           "Net-(C1-Pad1)",
