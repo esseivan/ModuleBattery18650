@@ -414,6 +414,7 @@
           "/Vch",
           "GND",
           "Net-(C1-Pad1)",
+          "Net-(R2-Pad1)",
           "Net-(RS2-Pad2)"
         ],
         "pcb_color": "rgba(0, 0, 0, 0.000)",
