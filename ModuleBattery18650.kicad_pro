@@ -437,7 +437,7 @@
         "name": "Default",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.25,
+        "track_width": 0.35,
         "via_diameter": 0.8,
         "via_drill": 0.4,
         "wire_width": 6
@@ -481,7 +481,17 @@
       "version": 3
     },
     "net_colors": null,
-    "netclass_assignments": null,
+    "netclass_assignments": {
+      "/Vbat": "Power",
+      "/Vch": "Power",
+      "GND": "Power",
+      "Net-(BT1-+)": "Battery",
+      "Net-(J1-P3)": "Default",
+      "Net-(JP1-B)": "Power",
+      "Net-(JP2-B)": "Default",
+      "Net-(T2-G)": "Default",
+      "Net-(U1-VDD)": "Power"
+    },
     "netclass_patterns": []
   },
   "pcbnew": {
