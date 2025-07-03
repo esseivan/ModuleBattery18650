@@ -51,21 +51,7 @@ jobs:
         if [ -d "$PDF_PATH" ]; then
           PDF_FILES=$(find "$PDF_PATH" -type f -name "*.pdf")
           if [ -n "$PDF_FILES" ]; then
-            # Créer une archive ZIP des fichiers PDF
-            mkdir -p pdf-output
-            echo "$PDF_FILES" | while read -r file; do
-              [ -f "$file" ] && cp "$file" pdf-output/
-            done
-            
-            if [ "$(ls -A pdf-output/ 2>/dev/null)" ]; then
-              cd pdf-output
-              zip -r ../pdf-files.zip .
-              cd ..
-              echo "pdf_zip=pdf-files.zip" >> $GITHUB_OUTPUT
-              echo "has_pdf=true" >> $GITHUB_OUTPUT
-            else
-              echo "has_pdf=false" >> $GITHUB_OUTPUT
-            fi
+            echo "has_pdf=true" >> $GITHUB_OUTPUT
           else
             echo "has_pdf=false" >> $GITHUB_OUTPUT
           fi
@@ -74,13 +60,12 @@ jobs:
           echo "has_pdf=false" >> $GITHUB_OUTPUT
         fi
        
-    - name: Upload Gerber files to release
+    - name: Upload Gerber ZIP to release
       if: steps.find-gerber.outputs.has_gerber == 'true'
-      run: |
-        find "./fabrication/gerber" -type f \( -name "*.gbr" -o -name "*.drl" \) -print0 | while IFS= read -r -d '' file; do
-          echo "Uploading: $file"
-          gh release upload "${{ github.event.release.tag_name }}" "$file" --clobber
-        done
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ steps.find-gerber.outputs.gerber_zip }}
+        tag_name: ${{ github.event.release.tag_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
        
@@ -105,7 +90,7 @@ jobs:
         fi
         echo "### Fichiers PDF:" >> $GITHUB_STEP_SUMMARY
         if [ "${{ steps.find-pdf.outputs.has_pdf }}" = "true" ]; then
-          echo "- Archive ZIP créée: ${{ steps.find-pdf.outputs.pdf_zip }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Fichiers PDF uploadés individuellement" >> $GITHUB_STEP_SUMMARY
         else
           echo "- Aucun fichier PDF trouvé" >> $GITHUB_STEP_SUMMARY
         fi
