@@ -1,0 +1,96 @@
+name: KiCad Release Artifacts
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  upload-artifacts:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Find Gerber files
+      id: find-gerber
+      run: |
+        # Chemins hardcodés pour les fichiers Gerber
+        GERBER_PATH="./fabrication/gerber"
+        
+        if [ -d "$GERBER_PATH" ]; then
+          GERBER_FILES=$(find "$GERBER_PATH" -type f \( -name "*.gbr" -o -name "*.drl" \) | tr '\n' ' ')
+          echo "gerber_files=$GERBER_FILES" >> $GITHUB_OUTPUT
+          
+          # Créer une archive ZIP des fichiers Gerber
+          if [ -n "$GERBER_FILES" ]; then
+            mkdir -p gerber-output
+            cp $GERBER_FILES gerber-output/ 2>/dev/null || true
+            if [ "$(ls -A gerber-output/)" ]; then
+              cd gerber-output
+              zip -r ../gerber-files.zip .
+              cd ..
+              echo "gerber_zip=gerber-files.zip" >> $GITHUB_OUTPUT
+            fi
+          fi
+        else
+          echo "Dossier Gerber non trouvé: $GERBER_PATH"
+          echo "gerber_files=" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Find PDF files
+      id: find-pdf
+      run: |
+        # Chemins hardcodés pour les fichiers PDF
+        PDF_PATH="./fabrication/pdf"
+        
+        if [ -d "$PDF_PATH" ]; then
+          PDF_FILES=$(find "$PDF_PATH" -type f -name "*.pdf" | tr '\n' ' ')
+          echo "pdf_files=$PDF_FILES" >> $GITHUB_OUTPUT
+        else
+          echo "Dossier PDF non trouvé: $PDF_PATH"
+          echo "pdf_files=" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Upload Gerber files to release
+      if: steps.find-gerber.outputs.gerber_files != ''
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ steps.find-gerber.outputs.gerber_files }}
+        tag_name: ${{ github.event.release.tag_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Gerber ZIP to release
+      if: steps.find-gerber.outputs.gerber_zip != ''
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ steps.find-gerber.outputs.gerber_zip }}
+        tag_name: ${{ github.event.release.tag_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload PDF files to release
+      if: steps.find-pdf.outputs.pdf_files != ''
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ steps.find-pdf.outputs.pdf_files }}
+        tag_name: ${{ github.event.release.tag_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Summary
+      run: |
+        echo "## Fichiers ajoutés à la release" >> $GITHUB_STEP_SUMMARY
+        echo "### Fichiers Gerber:" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ steps.find-gerber.outputs.gerber_files }}" ]; then
+          echo "${{ steps.find-gerber.outputs.gerber_files }}" | tr ' ' '\n' | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Aucun fichier Gerber trouvé" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "### Fichiers PDF:" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ steps.find-pdf.outputs.pdf_files }}" ]; then
+          echo "${{ steps.find-pdf.outputs.pdf_files }}" | tr ' ' '\n' | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Aucun fichier PDF trouvé" >> $GITHUB_STEP_SUMMARY
+        fi
