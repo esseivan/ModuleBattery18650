@@ -1,96 +1,111 @@
 name: KiCad Release Artifacts
-
 on:
   release:
     types: [published]
-
 jobs:
   upload-artifacts:
     runs-on: ubuntu-latest
-    
+   
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
-    - name: Find Gerber files
+     
+    - name: Find and prepare Gerber files
       id: find-gerber
       run: |
         # Chemins hardcodés pour les fichiers Gerber
         GERBER_PATH="./fabrication/gerber"
-        
+       
         if [ -d "$GERBER_PATH" ]; then
-          GERBER_FILES=$(find "$GERBER_PATH" -type f \( -name "*.gbr" -o -name "*.drl" \) | tr '\n' ' ')
-          echo "gerber_files=$GERBER_FILES" >> $GITHUB_OUTPUT
-          
           # Créer une archive ZIP des fichiers Gerber
+          GERBER_FILES=$(find "$GERBER_PATH" -type f \( -name "*.gbr" -o -name "*.drl" \))
           if [ -n "$GERBER_FILES" ]; then
             mkdir -p gerber-output
-            cp $GERBER_FILES gerber-output/ 2>/dev/null || true
-            if [ "$(ls -A gerber-output/)" ]; then
+            echo "$GERBER_FILES" | while read -r file; do
+              [ -f "$file" ] && cp "$file" gerber-output/
+            done
+            
+            if [ "$(ls -A gerber-output/ 2>/dev/null)" ]; then
               cd gerber-output
               zip -r ../gerber-files.zip .
               cd ..
               echo "gerber_zip=gerber-files.zip" >> $GITHUB_OUTPUT
+              echo "has_gerber=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_gerber=false" >> $GITHUB_OUTPUT
             fi
+          else
+            echo "has_gerber=false" >> $GITHUB_OUTPUT
           fi
         else
           echo "Dossier Gerber non trouvé: $GERBER_PATH"
-          echo "gerber_files=" >> $GITHUB_OUTPUT
+          echo "has_gerber=false" >> $GITHUB_OUTPUT
         fi
-        
-    - name: Find PDF files
+       
+    - name: Find and prepare PDF files
       id: find-pdf
       run: |
         # Chemins hardcodés pour les fichiers PDF
         PDF_PATH="./fabrication/pdf"
-        
+       
         if [ -d "$PDF_PATH" ]; then
-          PDF_FILES=$(find "$PDF_PATH" -type f -name "*.pdf" | tr '\n' ' ')
-          echo "pdf_files=$PDF_FILES" >> $GITHUB_OUTPUT
+          PDF_FILES=$(find "$PDF_PATH" -type f -name "*.pdf")
+          if [ -n "$PDF_FILES" ]; then
+            # Créer une archive ZIP des fichiers PDF
+            mkdir -p pdf-output
+            echo "$PDF_FILES" | while read -r file; do
+              [ -f "$file" ] && cp "$file" pdf-output/
+            done
+            
+            if [ "$(ls -A pdf-output/ 2>/dev/null)" ]; then
+              cd pdf-output
+              zip -r ../pdf-files.zip .
+              cd ..
+              echo "pdf_zip=pdf-files.zip" >> $GITHUB_OUTPUT
+              echo "has_pdf=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_pdf=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_pdf=false" >> $GITHUB_OUTPUT
+          fi
         else
           echo "Dossier PDF non trouvé: $PDF_PATH"
-          echo "pdf_files=" >> $GITHUB_OUTPUT
+          echo "has_pdf=false" >> $GITHUB_OUTPUT
         fi
-        
+       
     - name: Upload Gerber files to release
-      if: steps.find-gerber.outputs.gerber_files != ''
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ${{ steps.find-gerber.outputs.gerber_files }}
-        tag_name: ${{ github.event.release.tag_name }}
+      if: steps.find-gerber.outputs.has_gerber == 'true'
+      run: |
+        find "./fabrication/gerber" -type f \( -name "*.gbr" -o -name "*.drl" \) -print0 | while IFS= read -r -d '' file; do
+          echo "Uploading: $file"
+          gh release upload "${{ github.event.release.tag_name }}" "$file" --clobber
+        done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Upload Gerber ZIP to release
-      if: steps.find-gerber.outputs.gerber_zip != ''
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ${{ steps.find-gerber.outputs.gerber_zip }}
-        tag_name: ${{ github.event.release.tag_name }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+       
     - name: Upload PDF files to release
-      if: steps.find-pdf.outputs.pdf_files != ''
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ${{ steps.find-pdf.outputs.pdf_files }}
-        tag_name: ${{ github.event.release.tag_name }}
+      if: steps.find-pdf.outputs.has_pdf == 'true'
+      run: |
+        find "./fabrication/pdf" -type f -name "*.pdf" -print0 | while IFS= read -r -d '' file; do
+          echo "Uploading: $file"
+          gh release upload "${{ github.event.release.tag_name }}" "$file" --clobber
+        done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+       
     - name: Summary
       run: |
         echo "## Fichiers ajoutés à la release" >> $GITHUB_STEP_SUMMARY
         echo "### Fichiers Gerber:" >> $GITHUB_STEP_SUMMARY
-        if [ -n "${{ steps.find-gerber.outputs.gerber_files }}" ]; then
-          echo "${{ steps.find-gerber.outputs.gerber_files }}" | tr ' ' '\n' | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.find-gerber.outputs.has_gerber }}" = "true" ]; then
+          echo "- Archive ZIP créée: ${{ steps.find-gerber.outputs.gerber_zip }}" >> $GITHUB_STEP_SUMMARY
         else
           echo "- Aucun fichier Gerber trouvé" >> $GITHUB_STEP_SUMMARY
         fi
         echo "### Fichiers PDF:" >> $GITHUB_STEP_SUMMARY
-        if [ -n "${{ steps.find-pdf.outputs.pdf_files }}" ]; then
-          echo "${{ steps.find-pdf.outputs.pdf_files }}" | tr ' ' '\n' | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.find-pdf.outputs.has_pdf }}" = "true" ]; then
+          echo "- Archive ZIP créée: ${{ steps.find-pdf.outputs.pdf_zip }}" >> $GITHUB_STEP_SUMMARY
         else
           echo "- Aucun fichier PDF trouvé" >> $GITHUB_STEP_SUMMARY
         fi
